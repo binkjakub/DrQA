@@ -25,7 +25,7 @@ class TfidfDocRanker(object):
     Scores new queries by taking sparse dot products.
     """
 
-    def __init__(self, tfidf_path=None, strict=True, model='en'):
+    def __init__(self, tfidf_path=None, strict=True, model='pl_core_news_sm'):
         """
         Args:
             tfidf_path: path to saved model file
@@ -52,18 +52,20 @@ class TfidfDocRanker(object):
         """Convert doc_index --> doc_id"""
         return self.doc_dict[1][doc_index]
 
-    def closest_docs(self, query, k=1):
+    def closest_docs(self, query, k=1, rev=False):
         """Closest docs by dot product between query and documents
         in tfidf weighted word vector space.
         """
         spvec = self.text2spvec(query)
         res = spvec * self.doc_mat
 
+        rev = -1 if rev else 1
+        res_sort_order = -res.data * rev
         if len(res.data) <= k:
-            o_sort = np.argsort(-res.data)
+            o_sort = np.argsort(res_sort_order)
         else:
-            o = np.argpartition(-res.data, k)[0:k]
-            o_sort = o[np.argsort(-res.data[o])]
+            o = np.argpartition(res_sort_order, k)[0:k]
+            o_sort = o[np.argsort(res_sort_order[o])]
 
         doc_scores = res.data[o_sort]
         doc_ids = [self.get_doc_id(i) for i in res.indices[o_sort]]

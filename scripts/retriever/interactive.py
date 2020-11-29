@@ -32,8 +32,8 @@ ranker = retriever.get_class('tfidf')(tfidf_path=args.model)
 # ------------------------------------------------------------------------------
 
 
-def process(query, k=1):
-    doc_names, doc_scores = ranker.closest_docs(query, k)
+def process(query, k=1, rev=False):
+    doc_names, doc_scores = ranker.closest_docs(query, k, rev)
     table = prettytable.PrettyTable(
         ['Rank', 'Doc Id', 'Doc Score']
     )
