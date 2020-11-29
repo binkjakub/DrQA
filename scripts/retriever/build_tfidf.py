@@ -6,17 +6,17 @@
 # LICENSE file in the root directory of this source tree.
 """A script to build the tf-idf document matrices for retrieval."""
 
+import argparse
+import logging
+import math
+import os
+from collections import Counter
+from functools import partial
+from multiprocessing import Pool as ProcessPool
+
 import numpy as np
 import scipy.sparse as sp
-import argparse
-import os
-import math
-import logging
-
-from multiprocessing import Pool as ProcessPool
 from multiprocessing.util import Finalize
-from functools import partial
-from collections import Counter
 
 from drqa import retriever
 from drqa import tokenizers
@@ -28,7 +28,6 @@ console = logging.StreamHandler()
 console.setFormatter(fmt)
 logger.addHandler(console)
 
-
 # ------------------------------------------------------------------------------
 # Multiprocessing functions
 # ------------------------------------------------------------------------------
@@ -38,9 +37,9 @@ PROCESS_TOK = None
 PROCESS_DB = None
 
 
-def init(tokenizer_class, db_class, db_opts):
+def init(tokenizer_class, db_class, db_opts, model_name):
     global PROCESS_TOK, PROCESS_DB
-    PROCESS_TOK = tokenizer_class()
+    PROCESS_TOK = tokenizer_class(model=model_name)
     Finalize(PROCESS_TOK, PROCESS_TOK.shutdown, exitpriority=100)
     PROCESS_DB = db_class(**db_opts)
     Finalize(PROCESS_DB, PROCESS_DB.close, exitpriority=100)
@@ -97,10 +96,11 @@ def get_count_matrix(args, db, db_opts):
 
     # Setup worker pool
     tok_class = tokenizers.get_class(args.tokenizer)
+    model_name = args.model_name
     workers = ProcessPool(
         args.num_workers,
         initializer=init,
-        initargs=(tok_class, db_class, db_opts)
+        initargs=(tok_class, db_class, db_opts, args.model_name)
     )
 
     # Compute the count matrix in steps (to keep in memory)
@@ -166,6 +166,8 @@ if __name__ == '__main__':
                         help='Path to sqlite db holding document texts')
     parser.add_argument('out_dir', type=str, default=None,
                         help='Directory for saving output files')
+    parser.add_argument('--model-name', type=str, default='pl_core_news_sm',
+                        help="Model name when using spacy tokenizer, defaults to pl_core_news_sm")
     parser.add_argument('--ngram', type=int, default=2,
                         help=('Use up to N-size n-grams '
                               '(e.g. 2 = unigrams + bigrams)'))
